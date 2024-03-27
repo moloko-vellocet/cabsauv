@@ -1,0 +1,232 @@
+https://webadmin.cardnet.hu/webadmin/login.seam<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Rooms</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+    .container {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .chat-room {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .chat-room img {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        margin-right: 10px;
+        object-fit: cover; /* Ensure the image covers the container */
+    }
+    .chat-room-info {
+        flex: 1;
+    }
+    .create-room {
+        margin-top: 20px;
+        text-align: center;
+    }
+    .create-room input[type="text"],
+    .create-room textarea,
+    .create-room button {
+        margin-bottom: 10px;
+    }
+    .chat-container {
+        display: none;
+    }
+    .message {
+        margin-bottom: 10px;
+    }
+    .message img {
+        max-width: 100%; /* Ensure images fit within their containers */
+        height: auto; /* Maintain aspect ratio */
+        display: block; /* Prevents inline image alignment issues */
+        margin-top: 5px; /* Add some spacing between messages */
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <h2>Chat Rooms</h2>
+    <div id="chatRooms"></div>
+    <div class="create-room">
+        <h3>Create New Chat Room</h3>
+        <input type="text" id="roomName" placeholder="Room Name">
+        <input type="file" accept="image/*" id="roomAvatarInput" onchange="handleRoomAvatarUpload(event)">
+        <textarea id="roomBio" placeholder="Room Bio"></textarea>
+        <button onclick="createChatRoom()">Create Room</button>
+    </div>
+    <div class="chat-container" id="chatContainer">
+        <h2 id="roomTitle"></h2>
+        <div id="chatMessages"></div>
+        <div class="message">
+            <input type="text" id="messageInput" placeholder="Type your message...">
+            <input type="file" accept="image/*" id="imageInput">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+</div>
+<script>
+    let chatRooms = [];
+    let currentRoomIndex = -1; // Index of the current room being viewed
+
+    function renderChatRooms() {
+        const chatRoomsContainer = document.getElementById('chatRooms');
+        chatRoomsContainer.innerHTML = '';
+
+        chatRooms.forEach((room, index) => {
+            const roomElement = document.createElement('div');
+            roomElement.classList.add('chat-room');
+            roomElement.onclick = () => enterChatRoom(index);
+
+            const roomAvatar = document.createElement('img');
+            roomAvatar.src = room.avatar || 'default-room-avatar.png';
+            roomAvatar.alt = room.name + ' Avatar';
+
+            const roomInfo = document.createElement('div');
+            roomInfo.classList.add('chat-room-info');
+            roomInfo.innerHTML = `<strong>${room.name}</strong><br>${room.bio}`;
+
+            roomElement.appendChild(roomAvatar);
+            roomElement.appendChild(roomInfo);
+
+            chatRoomsContainer.appendChild(roomElement);
+        });
+    }
+
+    function createChatRoom() {
+        const roomName = document.getElementById('roomName').value.trim();
+        const roomBio = document.getElementById('roomBio').value.trim();
+        const roomAvatar = document.getElementById('roomAvatarInput').files[0];
+
+        if (!roomName || !roomBio || !roomAvatar) {
+            alert('Please fill in all fields');
+            return;
+        }
+
+        const newRoom = {
+            name: roomName,
+            bio: roomBio,
+            avatar: URL.createObjectURL(roomAvatar),
+            messages: []
+        };
+
+        chatRooms.push(newRoom);
+        renderChatRooms();
+    }
+
+    function enterChatRoom(index) {
+        currentRoomIndex = index;
+        const currentRoom = chatRooms[currentRoomIndex];
+        document.getElementById('roomTitle').innerText = currentRoom.name;
+        renderChatMessages();
+        document.getElementById('chatContainer').style.display = 'block';
+    }
+
+    function renderChatMessages() {
+        const chatMessagesContainer = document.getElementById('chatMessages');
+        chatMessagesContainer.innerHTML = '';
+
+        const currentRoom = chatRooms[currentRoomIndex];
+        currentRoom.messages.forEach(message => {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+
+            if (message.messageText) {
+                const messageTextElement = document.createElement('span');
+                messageTextElement.textContent = message.messageText;
+                messageElement.appendChild(messageTextElement);
+            }
+
+            if (message.imageFile) {
+                const imageElement = document.createElement('img');
+                imageElement.src = URL.createObjectURL(message.imageFile);
+                imageElement.alt = 'Image';
+                messageElement.appendChild(imageElement);
+            }
+
+            chatMessagesContainer.appendChild(messageElement);
+        });
+    }
+
+    function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const imageInput = document.getElementById('imageInput');
+        const messageText = messageInput.value.trim();
+        const imageFile = imageInput.files[0];
+
+        if (messageText === '' && !imageFile) return;
+
+        const currentRoom = chatRooms[currentRoomIndex];
+        const message = {
+            userId: currentRoom.messages.length, // Temporary user ID
+            userName: "Anonymous", // Temporary user name
+            messageText
+        };
+
+        if (imageFile) {
+            message.imageFile = imageFile;
+        }
+
+        currentRoom.messages.push(message);
+        renderChatMessages();
+        messageInput.value = '';
+        imageInput.value = null;
+    }
+
+    function handleRoomAvatarUpload(event) {
+    const roomAvatarPreview = document.getElementById('roomAvatarPreview');
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const MAX_WIDTH = 50; // Maximum width for the image
+                const MAX_HEIGHT = 50; // Maximum height for the image
+                let width = img.width;
+                let height = img.height;
+
+                // Check if resizing is necessary
+                if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+                    if (width > height) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    } else {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                // Create a canvas element to draw the resized image
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Set the canvas data as the source of the preview image
+                roomAvatarPreview.src = canvas.toDataURL('image/png');
+                roomAvatarPreview.style.display = 'block';
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+</script>
+</body>
+</html>
